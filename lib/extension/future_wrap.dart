@@ -1,9 +1,7 @@
-import 'package:bluetooth_module/exception/bluetooth_module_exception.dart';
-
 typedef FutureCallback<T> = Future<T> Function();
 typedef FutureVoidCallback = Future<void> Function();
 
-extension FutureWrap<T> on Future<T> {
+extension FutureWrapExt<T> on Future<T> {
   Future<T?> callWithCustomError({
     FutureVoidCallback? continueFunction,
     Exception? usingCustomException,
