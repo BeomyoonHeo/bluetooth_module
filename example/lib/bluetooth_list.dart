@@ -12,7 +12,7 @@ class BluetoothList extends StatefulWidget {
 
 class _BluetoothListState extends State<BluetoothList> {
   StreamSubscription<bool>? _subscription;
-  final List<BluetoothDevice> _list = [];
+  final List<ClassicDevice> _list = [];
   final List<BleDevice> _bleList = [];
 
   void _listenDiscover() => _subscription = BluetoothManager().isDiscovering.listen((isDiscovering) {
@@ -76,7 +76,7 @@ class _BluetoothListState extends State<BluetoothList> {
                   title: Text(_bleList[index].advName),
                   subtitle: Text(_bleList[index].remoteId.str),
                   onTap: () async {
-                    //await BluetoothManager().connectDevice(_list[index].device.address);
+                    await BluetoothManager().connectDevice(bleDevice: _bleList[index]);
                   },
                 ),
               );

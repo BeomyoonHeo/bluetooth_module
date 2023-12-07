@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:bluetooth_module/extension/bluetooth_device_ext.dart';
 import 'package:bluetooth_module/extension/future_wrap.dart';
 import 'package:bluetooth_module/setting_object/base_bluetooth_object.dart';
 import 'package:bluetooth_module/setting_object/setting_object.dart';
@@ -32,7 +33,7 @@ final class BluetoothManager extends FlutterBluePlus {
 
   final FlutterBluetoothSerial _classic;
   final Stream<bool> _isBluetoothEnabledController;
-  final List<BluetoothDevice> _lastDiscoveryResults = [];
+  final List<ClassicDevice> _lastDiscoveryResults = [];
   final List<BleDevice> _lastBleResults = [];
   final StreamController<bool> _isScanningController;
   SettingObject _settingObject;
@@ -41,7 +42,7 @@ final class BluetoothManager extends FlutterBluePlus {
   StreamSubscription<bool>? _isScanningSubscription;
 
   void _init() {
-    FlutterBluePlus.setLogLevel(LogLevel.debug);
+    FlutterBluePlus.setLogLevel(LogLevel.verbose);
 
     _isScanningSubscription = FlutterBluePlus.isScanning.listen((isScanning) {
       debugPrint('isScanning: $isScanning');
@@ -53,6 +54,11 @@ final class BluetoothManager extends FlutterBluePlus {
         _isScanningController.add(false);
       }
     });
+
+    FlutterBluePlus.events.onConnectionStateChanged.listen((event) async {
+      debugPrint('connection state changed: ${event.device.isConnected}');
+      debugPrint('connection state changed: ${event.device.servicesList}');
+    });
   }
 
   /// SettingObject 내부에 있는 fiilter 를 통해 필터링을 진행
@@ -60,14 +66,6 @@ final class BluetoothManager extends FlutterBluePlus {
     return _classic.startDiscovery().where((event) {
       if (!_settingObject.isFilteringEnabled) {
         return true;
-      }
-
-      if (event.device.name == "XINGO_BLE") {
-        debugPrint(event.device.type.stringValue);
-      }
-
-      if (event.device.name == 'XINGO') {
-        debugPrint(event.device.type.stringValue);
       }
 
       final bool isNameMatched = _settingObject.filteringDeviceNameList.any((name) => name == event.device.name);
@@ -92,6 +90,10 @@ final class BluetoothManager extends FlutterBluePlus {
   }
 
   void startScan() async {
+    if (_discoveryResultSubscription != null) {
+      return;
+    }
+
     _lastDiscoveryResults.clear();
 
     _isScanningController.add(true);
@@ -99,8 +101,8 @@ final class BluetoothManager extends FlutterBluePlus {
     debugPrint('scanFilter Name List: ${_settingObject.filteringBleDeviceNameList}');
     FlutterBluePlus.startScan(withNames: _settingObject.filteringBleDeviceNameList, androidUsesFineLocation: true);
 
-    _discoveryResultSubscription = _startDiscovery().listen((event) {
-      _lastDiscoveryResults.add(event.device);
+    _discoveryResultSubscription ??= _startDiscovery().listen((event) {
+      _lastDiscoveryResults.add(event.device.toClassicDevice());
     }, onDone: () {
       FlutterBluePlus.stopScan();
       _discoveryResultSubscription?.cancel();
@@ -124,7 +126,18 @@ final class BluetoothManager extends FlutterBluePlus {
     await _classic.bondDeviceAtAddress(address);
   }
 
-  Future<void> connectDevice() async {}
+  Future<bool> connectDevice({
+    BleDevice? bleDevice,
+    ClassicDevice? classicDevice,
+  }) async {
+    assert(bleDevice != null || classicDevice != null);
+    assert(!(bleDevice != null && classicDevice != null));
+    if (bleDevice != null) {
+      return await bleDevice.tryConnection();
+    } else {
+      return await classicDevice?.tryConnection() ?? false;
+    }
+  }
 
   void connectedDevices() async {
     final result = await _classic.getBondedDevices();
@@ -146,7 +159,6 @@ final class BluetoothManager extends FlutterBluePlus {
     if (_instance == null) {
       return;
     }
-
     _instance?._cancelAllSubscription();
     _instance?._isScanningController.close();
     _instance = null;
@@ -168,11 +180,13 @@ final class BluetoothManager extends FlutterBluePlus {
     _settingObject = _settingObject.copyWith(filteringDeviceAddress: value);
   }
 
+  static BluetoothEvents get bleEvents => FlutterBluePlus.events;
+
   Stream<bool> get currentOnOffState => _isBluetoothEnabledController;
 
   Stream<bool> get isDiscovering => _isScanningController.stream;
 
-  List<BluetoothDevice> get lastDiscoveryResults => _lastDiscoveryResults;
+  List<ClassicDevice> get lastDiscoveryResults => _lastDiscoveryResults;
 
   List<BleDevice> get lastBleResults => _lastBleResults;
 }
