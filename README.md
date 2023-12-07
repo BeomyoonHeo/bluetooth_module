@@ -13,7 +13,7 @@ reference Repository: https://github.com/boskokg/flutter_blue_plus, https://gith
 
 ## Using Dependencies
     flutter_bluetooth_serial: ^0.4.0
-    flutter_blue_plus: ^1.30.2
+    flutter_blue_plus: ^1.30.3
 
 ## Using Platform
     Android
