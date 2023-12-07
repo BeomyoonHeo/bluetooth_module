@@ -126,7 +126,7 @@ final class BluetoothManager extends FlutterBluePlus {
     await _classic.openSettings();
   }
 
-  Future<void> removeDevice(String address) async {
+  Future<void> removeBondDevice(String address) async {
     await _classic.removeDeviceBondWithAddress(address);
   }
 
@@ -178,7 +178,7 @@ final class BluetoothManager extends FlutterBluePlus {
     _isScanningSubscription = null;
   }
 
-  static invalidateInstance() {
+  static void invalidateInstance() {
     if (_instance == null) {
       return;
     }
@@ -207,7 +207,7 @@ final class BluetoothManager extends FlutterBluePlus {
 
   Stream<bool> get currentOnOffState => _isBluetoothEnabledController;
 
-  Stream<bool> get isDiscovering => _isScanningController.stream;
+  Stream<bool> get isScan => _isScanningController.stream;
 
   List<ClassicDevice> get lastClassicResults => _lastClassicResults;
 
