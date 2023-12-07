@@ -18,7 +18,7 @@ class _BluetoothListState extends State<BluetoothList> {
   void _listenDiscover() => _subscription = BluetoothManager().isDiscovering.listen((isDiscovering) {
         if (!isDiscovering) {
           setState(() {
-            _list.addAll(BluetoothManager().lastDiscoveryResults);
+            _list.addAll(BluetoothManager().lastClassicResults);
             _bleList.addAll(BluetoothManager().lastBleResults);
           });
         } else {
