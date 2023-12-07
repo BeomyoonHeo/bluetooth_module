@@ -18,16 +18,14 @@ final class BluetoothManager extends FlutterBluePlus {
   })  : _classic = classic,
         _isBluetoothEnabledController = isBluetoothEnabledController,
         _settingObject = settingObject,
-        _isScanningController = isScanningController {
-    _init();
-  }
+        _isScanningController = isScanningController;
 
   factory BluetoothManager() => _instance ??= BluetoothManager._(
         classic: FlutterBluetoothSerial.instance,
         isBluetoothEnabledController: FlutterBluePlus.adapterState.transform(BluetoothStateTransformer()),
         settingObject: const SettingObject(),
         isScanningController: StreamController<bool>.broadcast(),
-      );
+      ).._init();
 
   static BluetoothManager? _instance;
 
@@ -99,6 +97,7 @@ final class BluetoothManager extends FlutterBluePlus {
     _isScanningController.add(true);
 
     debugPrint('scanFilter Name List: ${_settingObject.filteringBleDeviceNameList}');
+
     FlutterBluePlus.startScan(withNames: _settingObject.filteringBleDeviceNameList, androidUsesFineLocation: true);
 
     _discoveryResultSubscription ??= _startDiscovery().listen((event) {
@@ -129,13 +128,28 @@ final class BluetoothManager extends FlutterBluePlus {
   Future<bool> connectDevice({
     BleDevice? bleDevice,
     ClassicDevice? classicDevice,
+    Function? handleException,
   }) async {
     assert(bleDevice != null || classicDevice != null);
     assert(!(bleDevice != null && classicDevice != null));
     if (bleDevice != null) {
-      return await bleDevice.tryConnection();
+      return await bleDevice.tryConnection(handleException: handleException);
     } else {
-      return await classicDevice?.tryConnection() ?? false;
+      return await classicDevice?.tryConnection(handleException: handleException) ?? false;
+    }
+  }
+
+  Future<bool> disConnectDevice({
+    BleDevice? bleDevice,
+    ClassicDevice? classicDevice,
+    Function? handleException,
+  }) async {
+    assert(bleDevice != null || classicDevice != null);
+    assert(!(bleDevice != null && classicDevice != null));
+    if (bleDevice != null) {
+      return await bleDevice.tryDisConnection(handleException: handleException);
+    } else {
+      return await classicDevice?.tryDisConnection(handleException: handleException) ?? false;
     }
   }
 

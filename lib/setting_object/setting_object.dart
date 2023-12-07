@@ -25,5 +25,6 @@ class SettingObject {
         filteringBleDeviceNameList: filteringBleDeviceNameList ?? this.filteringBleDeviceNameList,
       );
 
-  bool get isFilteringEnabled => filteringDeviceNameList.isNotEmpty || filteringDeviceAddress != null;
+  bool get isFilteringEnabled =>
+      filteringDeviceNameList.isNotEmpty || filteringBleDeviceNameList.isNotEmpty || filteringDeviceAddress != null;
 }
