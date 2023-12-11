@@ -1,13 +1,17 @@
 import 'dart:async';
 
+import 'package:bluetooth_module/exception/bluetooth_module_exception.dart';
 import 'package:bluetooth_module/extension/bluetooth_device_ext.dart';
 import 'package:bluetooth_module/extension/future_wrap.dart';
 import 'package:bluetooth_module/setting_object/base_bluetooth_object.dart';
 import 'package:bluetooth_module/setting_object/setting_object.dart';
 import 'package:bluetooth_module/utils/transformer.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide BluetoothDevice;
+
+part '../extension/bluetooth_manager_ext.dart';
 
 /// flutterbluetoothserial을 통해서 ble도 함께 가지고 올 수 있지만 flutterblueplus를 통해서 가지고 오는 이유는
 /// flutterblueplus를 통해서 가지고 올 경우 service, characteristic, descriptor 등을 dart객체로 맵핑되어 가지고 올 수 있기 때문
@@ -127,38 +131,31 @@ final class BluetoothManager extends FlutterBluePlus {
   }
 
   Future<void> removeBondDevice(String address) async {
+    await BluetoothConnection.toAddress(address).then((value) => value.isConnected ? value.finish() : null);
     await _classic.removeDeviceBondWithAddress(address);
   }
 
-  Future<void> bondDevice(String address) async {
-    await _classic.bondDeviceAtAddress(address);
-  }
+  Future<void> bondDevice(String address, {bool isReBond = false}) async {
+    try {
+      final bondState = await _classic.getBondStateForAddress(address);
 
-  Future<bool> connectDevice({
-    BleDevice? bleDevice,
-    ClassicDevice? classicDevice,
-    Function? handleException,
-  }) async {
-    assert(bleDevice != null || classicDevice != null);
-    assert(!(bleDevice != null && classicDevice != null));
-    if (bleDevice != null) {
-      return await bleDevice.tryConnection(handleException: handleException);
-    } else {
-      return await classicDevice?.tryConnection(handleException: handleException) ?? false;
-    }
-  }
+      final processRecord = (bondState.isBonded, isReBond);
 
-  Future<bool> disConnectDevice({
-    BleDevice? bleDevice,
-    ClassicDevice? classicDevice,
-    Function? handleException,
-  }) async {
-    assert(bleDevice != null || classicDevice != null);
-    assert(!(bleDevice != null && classicDevice != null));
-    if (bleDevice != null) {
-      return await bleDevice.tryDisConnection(handleException: handleException);
-    } else {
-      return await classicDevice?.tryDisConnection(handleException: handleException) ?? false;
+      // 차라리 if - else가 더 나은듯? 가독성 우웩
+      switch (processRecord) {
+        case (true, true):
+          await removeBondDevice(address);
+          await valueOrException<bool?>(_classic.bondDeviceAtAddress(address));
+          return;
+        case (true, false):
+          return;
+        case (false, true):
+        case (false, false):
+          await valueOrException<bool?>(_classic.bondDeviceAtAddress(address));
+          return;
+      }
+    } on BluetoothModuleException catch (e) {
+      if (e is DeviceAlreadyBondedException) {}
     }
   }
 
