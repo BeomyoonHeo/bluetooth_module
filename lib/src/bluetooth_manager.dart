@@ -1,14 +1,21 @@
 import 'dart:async';
 
+import 'package:bluetooth_module/exception/bluetooth_module_exception.dart';
 import 'package:bluetooth_module/extension/bluetooth_device_ext.dart';
 import 'package:bluetooth_module/extension/future_wrap.dart';
 import 'package:bluetooth_module/setting_object/base_bluetooth_object.dart';
 import 'package:bluetooth_module/setting_object/setting_object.dart';
 import 'package:bluetooth_module/utils/transformer.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide BluetoothDevice;
 
+part '../extension/bluetooth_manager_ext.dart';
+
+/// flutterbluetoothserial을 통해서 ble도 함께 가지고 올 수 있지만 flutterblueplus를 통해서 가지고 오는 이유는
+/// flutterblueplus를 통해서 가지고 올 경우 service, characteristic, descriptor 등을 dart객체로 맵핑되어 가지고 올 수 있기 때문
+/// 반대로 flutterbluetoothserial를 사용하는 이유는 flutterblueplus는 ble만 가지고 올 수 있기 때문에 classic을 가지고 오기 위해서 사용
 final class BluetoothManager extends FlutterBluePlus {
   BluetoothManager._({
     required FlutterBluetoothSerial classic,
@@ -18,22 +25,20 @@ final class BluetoothManager extends FlutterBluePlus {
   })  : _classic = classic,
         _isBluetoothEnabledController = isBluetoothEnabledController,
         _settingObject = settingObject,
-        _isScanningController = isScanningController {
-    _init();
-  }
+        _isScanningController = isScanningController;
 
   factory BluetoothManager() => _instance ??= BluetoothManager._(
         classic: FlutterBluetoothSerial.instance,
         isBluetoothEnabledController: FlutterBluePlus.adapterState.transform(BluetoothStateTransformer()),
         settingObject: const SettingObject(),
         isScanningController: StreamController<bool>.broadcast(),
-      );
+      ).._init();
 
   static BluetoothManager? _instance;
 
   final FlutterBluetoothSerial _classic;
   final Stream<bool> _isBluetoothEnabledController;
-  final List<ClassicDevice> _lastDiscoveryResults = [];
+  final List<ClassicDevice> _lastClassicResults = [];
   final List<BleDevice> _lastBleResults = [];
   final StreamController<bool> _isScanningController;
   SettingObject _settingObject;
@@ -80,6 +85,7 @@ final class BluetoothManager extends FlutterBluePlus {
     });
   }
 
+  /// 블루투스 활성화가 안될경우 설정 페이지로 이동
   Future<void> enableBluetooth() async {
     await FlutterBluePlus.turnOn(timeout: _settingObject.timeout).callWithCustomError(continueFunction: openSettings);
   }
@@ -89,20 +95,26 @@ final class BluetoothManager extends FlutterBluePlus {
     await FlutterBluePlus.turnOff(timeout: _settingObject.timeout).callWithCustomError(continueFunction: openSettings);
   }
 
+  /// flutterblueplus + flutterbluetoothserial 스캔을 동시 진행
+  /// 각 호출은 stream으로 값을 받아온다
+  /// flutterblueplus는 [FlutterBluePlus.lastScanResults]에 스캔이 끝날 경우 결과를 담아둔다
+  /// classic의 discovery가 끝날경우 해당 stream이 close되기 때문에 동기성을 위해서 onDone 상태 진입시 flutterblueplus의 스캔을 중지한다
+  /// 위 스캔이 끝나고 결과는 [lastBleResults],[lastClassicResults]에 담아둔다
   void startScan() async {
     if (_discoveryResultSubscription != null) {
       return;
     }
 
-    _lastDiscoveryResults.clear();
+    _lastClassicResults.clear();
 
     _isScanningController.add(true);
 
     debugPrint('scanFilter Name List: ${_settingObject.filteringBleDeviceNameList}');
+
     FlutterBluePlus.startScan(withNames: _settingObject.filteringBleDeviceNameList, androidUsesFineLocation: true);
 
     _discoveryResultSubscription ??= _startDiscovery().listen((event) {
-      _lastDiscoveryResults.add(event.device.toClassicDevice());
+      _lastClassicResults.add(event.device.toClassicDevice());
     }, onDone: () {
       FlutterBluePlus.stopScan();
       _discoveryResultSubscription?.cancel();
@@ -118,24 +130,32 @@ final class BluetoothManager extends FlutterBluePlus {
     await _classic.openSettings();
   }
 
-  Future<void> removeDevice(String address) async {
+  Future<void> removeBondDevice(String address) async {
+    await BluetoothConnection.toAddress(address).then((value) => value.isConnected ? value.finish() : null);
     await _classic.removeDeviceBondWithAddress(address);
   }
 
-  Future<void> bondDevice(String address) async {
-    await _classic.bondDeviceAtAddress(address);
-  }
+  Future<void> bondDevice(String address, {bool isReBond = false}) async {
+    try {
+      final bondState = await _classic.getBondStateForAddress(address);
 
-  Future<bool> connectDevice({
-    BleDevice? bleDevice,
-    ClassicDevice? classicDevice,
-  }) async {
-    assert(bleDevice != null || classicDevice != null);
-    assert(!(bleDevice != null && classicDevice != null));
-    if (bleDevice != null) {
-      return await bleDevice.tryConnection();
-    } else {
-      return await classicDevice?.tryConnection() ?? false;
+      final processRecord = (bondState.isBonded, isReBond);
+
+      // 차라리 if - else가 더 나은듯? 가독성 우웩
+      switch (processRecord) {
+        case (true, true):
+          await removeBondDevice(address);
+          await valueOrException<bool?>(_classic.bondDeviceAtAddress(address));
+          return;
+        case (true, false):
+          return;
+        case (false, true):
+        case (false, false):
+          await valueOrException<bool?>(_classic.bondDeviceAtAddress(address));
+          return;
+      }
+    } on BluetoothModuleException catch (e) {
+      if (e is DeviceAlreadyBondedException) {}
     }
   }
 
@@ -155,7 +175,7 @@ final class BluetoothManager extends FlutterBluePlus {
     _isScanningSubscription = null;
   }
 
-  static invalidateInstance() {
+  static void invalidateInstance() {
     if (_instance == null) {
       return;
     }
@@ -184,9 +204,9 @@ final class BluetoothManager extends FlutterBluePlus {
 
   Stream<bool> get currentOnOffState => _isBluetoothEnabledController;
 
-  Stream<bool> get isDiscovering => _isScanningController.stream;
+  Stream<bool> get isScan => _isScanningController.stream;
 
-  List<ClassicDevice> get lastDiscoveryResults => _lastDiscoveryResults;
+  List<ClassicDevice> get lastClassicResults => _lastClassicResults;
 
   List<BleDevice> get lastBleResults => _lastBleResults;
 }

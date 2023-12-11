@@ -50,7 +50,7 @@ class _AppState extends State<App> {
         isBluetoothEnabled = event;
       });
     });
-    _discoveringSubscription ??= BluetoothManager().isDiscovering.listen((event) {
+    _discoveringSubscription ??= BluetoothManager().isScan.listen((event) {
       setState(() {
         isDiscovering = event;
       });

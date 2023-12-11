@@ -15,10 +15,10 @@ class _BluetoothListState extends State<BluetoothList> {
   final List<ClassicDevice> _list = [];
   final List<BleDevice> _bleList = [];
 
-  void _listenDiscover() => _subscription = BluetoothManager().isDiscovering.listen((isDiscovering) {
+  void _listenDiscover() => _subscription = BluetoothManager().isScan.listen((isDiscovering) {
         if (!isDiscovering) {
           setState(() {
-            _list.addAll(BluetoothManager().lastDiscoveryResults);
+            _list.addAll(BluetoothManager().lastClassicResults);
             _bleList.addAll(BluetoothManager().lastBleResults);
           });
         } else {
@@ -76,7 +76,8 @@ class _BluetoothListState extends State<BluetoothList> {
                   title: Text(_bleList[index].advName),
                   subtitle: Text(_bleList[index].remoteId.str),
                   onTap: () async {
-                    await BluetoothManager().connectDevice(bleDevice: _bleList[index]);
+                    await _bleList[index].tryConnection();
+                    debugPrint(_bleList[index].isConnected.toString());
                   },
                 ),
               );
