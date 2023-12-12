@@ -120,7 +120,7 @@ final class BluetoothManager extends FlutterBluePlus {
 
     _discoveryResultSubscription ??= _startDiscovery().listen((event) {
       _lastClassicResults.add(event.device.toClassicDevice());
-      _liveClassicResults.add([..._lastClassicResults]);
+      _liveClassicResults.add(_lastClassicResults);
     }, onDone: () {
       FlutterBluePlus.stopScan();
       _discoveryResultSubscription?.cancel();
