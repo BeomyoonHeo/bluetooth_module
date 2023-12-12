@@ -5,7 +5,8 @@ import 'package:bluetooth_module/extension/bluetooth_device_ext.dart';
 import 'package:bluetooth_module/extension/future_wrap.dart';
 import 'package:bluetooth_module/setting_object/base_bluetooth_object.dart';
 import 'package:bluetooth_module/setting_object/setting_object.dart';
-import 'package:bluetooth_module/utils/transformer.dart';
+import 'package:bluetooth_module/utils/transformer/ble_model_transformer.dart';
+import 'package:bluetooth_module/utils/transformer/bluetooth_discovery_transformer.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
@@ -29,7 +30,8 @@ final class BluetoothManager extends FlutterBluePlus {
 
   factory BluetoothManager() => _instance ??= BluetoothManager._(
         classic: FlutterBluetoothSerial.instance,
-        isBluetoothEnabledController: FlutterBluePlus.adapterState.transform(BluetoothStateTransformer()),
+        isBluetoothEnabledController:
+            FlutterBluePlus.adapterState.transform(BluetoothStateTransformer()).asBroadcastStream(),
         settingObject: const SettingObject(),
         isScanningController: StreamController<bool>.broadcast(),
       ).._init();
@@ -41,6 +43,9 @@ final class BluetoothManager extends FlutterBluePlus {
   final List<ClassicDevice> _lastClassicResults = [];
   final List<BleDevice> _lastBleResults = [];
   final StreamController<bool> _isScanningController;
+  final Stream<List<BleDevice>> _liveBleResults =
+      FlutterBluePlus.scanResults.transform(BleModelTransformer()).asBroadcastStream();
+  final StreamController<List<ClassicDevice>> _liveClassicResults = StreamController<List<ClassicDevice>>.broadcast();
   SettingObject _settingObject;
 
   StreamSubscription<BluetoothDiscoveryResult>? _discoveryResultSubscription;
@@ -115,6 +120,7 @@ final class BluetoothManager extends FlutterBluePlus {
 
     _discoveryResultSubscription ??= _startDiscovery().listen((event) {
       _lastClassicResults.add(event.device.toClassicDevice());
+      _liveClassicResults.add(_lastClassicResults);
     }, onDone: () {
       FlutterBluePlus.stopScan();
       _discoveryResultSubscription?.cancel();
@@ -209,4 +215,8 @@ final class BluetoothManager extends FlutterBluePlus {
   List<ClassicDevice> get lastClassicResults => _lastClassicResults;
 
   List<BleDevice> get lastBleResults => _lastBleResults;
+
+  Stream<List<BleDevice>> get liveBleResults => _liveBleResults;
+
+  Stream<List<ClassicDevice>> get liveClassicResults => _liveClassicResults.stream;
 }
