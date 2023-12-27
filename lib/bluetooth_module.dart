@@ -19,4 +19,5 @@ export 'package:flutter_blue_plus/flutter_blue_plus.dart'
         OnNameChangedEvent,
         OnReadRssiEvent,
         OnServicesResetEvent,
-        BluetoothCharacteristic;
+        BluetoothCharacteristic,
+        BluetoothConnectionState;
