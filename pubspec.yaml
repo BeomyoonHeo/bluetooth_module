@@ -1,6 +1,6 @@
 name: bluetooth_module
 description: "Flutter Bluetooth Integration Module"
-version: 0.0.1
+version: 0.0.2
 homepage:
 
 environment:
@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bluetooth_serial: ^0.4.0
-  flutter_blue_plus: ^1.30.3
+  flutter_blue_plus: ^1.31.3
 
 dev_dependencies:
   flutter_test:
