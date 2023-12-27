@@ -120,7 +120,7 @@ final class BluetoothManager extends FlutterBluePlus {
 
     _discoveryResultSubscription ??= _startDiscovery().listen((event) {
       _lastClassicResults.add(event.device.toClassicDevice());
-      _liveClassicResults.add(_lastClassicResults);
+      _liveClassicResults.add([..._lastClassicResults]);
     }, onDone: () {
       FlutterBluePlus.stopScan();
       _discoveryResultSubscription?.cancel();
@@ -207,6 +207,11 @@ final class BluetoothManager extends FlutterBluePlus {
   }
 
   static BluetoothEvents get bleEvents => FlutterBluePlus.events;
+
+  FlutterBluetoothSerial get classic => _classic;
+
+  List<BleDevice> get connectedDeviceList =>
+      FlutterBluePlus.connectedDevices.map((e) => BleDevice(remoteId: e.remoteId)).toList();
 
   Stream<bool> get currentOnOffState => _isBluetoothEnabledController;
 

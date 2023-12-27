@@ -32,6 +32,9 @@ class _BluetoothListState extends State<BluetoothList> {
   void initState() {
     super.initState();
     _listenDiscover();
+    BluetoothManager().liveClassicResults.listen((event) {
+      debugPrint('liveClassicResults: $event');
+    });
   }
 
   @override
