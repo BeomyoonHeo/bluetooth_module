@@ -41,10 +41,11 @@ final class BluetoothManager extends FlutterBluePlus {
   final FlutterBluetoothSerial _classic;
   final Stream<bool> _isBluetoothEnabledController;
   final List<ClassicDevice> _lastClassicResults = [];
-  final List<BleDevice> _lastBleResults = [];
+  final List<BleDevice> _lastBleResults =
+      FlutterBluePlus.lastScanResults.map((e) => BleDevice(remoteId: e.device.remoteId)).toList();
   final StreamController<bool> _isScanningController;
   final Stream<List<BleDevice>> _liveBleResults =
-      FlutterBluePlus.scanResults.transform(BleModelTransformer()).asBroadcastStream();
+      FlutterBluePlus.scanResults.transform(BleModelTransformer()).asBroadcastStream().distinct();
   final StreamController<List<ClassicDevice>> _liveClassicResults = StreamController<List<ClassicDevice>>.broadcast();
   SettingObject _settingObject;
 
@@ -60,7 +61,8 @@ final class BluetoothManager extends FlutterBluePlus {
         _isScanningController.add(true);
         _lastBleResults.clear();
       } else {
-        _lastBleResults.addAll(FlutterBluePlus.lastScanResults.map((e) => BleDevice(remoteId: e.device.remoteId)));
+        _lastBleResults
+            .addAll(FlutterBluePlus.lastScanResults.map((e) => BleDevice(remoteId: e.device.remoteId)).toList());
         _isScanningController.add(false);
       }
     });
@@ -116,7 +118,8 @@ final class BluetoothManager extends FlutterBluePlus {
 
     debugPrint('scanFilter Name List: ${_settingObject.filteringBleDeviceNameList}');
 
-    FlutterBluePlus.startScan(withNames: _settingObject.filteringBleDeviceNameList, androidUsesFineLocation: true);
+    await FlutterBluePlus.startScan(
+        withNames: _settingObject.filteringBleDeviceNameList, androidUsesFineLocation: true);
 
     _discoveryResultSubscription ??= _startDiscovery().listen((event) {
       _lastClassicResults.add(event.device.toClassicDevice());
