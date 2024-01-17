@@ -19,7 +19,6 @@ class _BluetoothListState extends State<BluetoothList> {
         if (!isDiscovering) {
           setState(() {
             _list.addAll(BluetoothManager().lastClassicResults);
-            _bleList.addAll(BluetoothManager().lastBleResults);
           });
         } else {
           setState(() {
@@ -32,8 +31,12 @@ class _BluetoothListState extends State<BluetoothList> {
   void initState() {
     super.initState();
     _listenDiscover();
-    BluetoothManager().liveClassicResults.listen((event) {
-      debugPrint('liveClassicResults: $event');
+
+    BluetoothManager().liveBleResults.listen((event) {
+      setState(() {
+        _bleList.clear();
+        _bleList.addAll(event);
+      });
     });
   }
 

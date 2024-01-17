@@ -51,6 +51,7 @@ class _AppState extends State<App> {
       });
     });
     _discoveringSubscription ??= BluetoothManager().isScan.listen((event) {
+      debugPrint('isDiscovering: $event');
       setState(() {
         isDiscovering = event;
       });
@@ -92,6 +93,7 @@ class _AppState extends State<App> {
           onPressed: isDiscovering ? null : BluetoothManager().startScan,
           child: isDiscovering ? const CircularProgressIndicator() : const Text('Scan Bluetooth'),
         ),
+        ElevatedButton(onPressed: BluetoothManager().stopScan, child: const Text('Stop Scan')),
       ],
     );
   }

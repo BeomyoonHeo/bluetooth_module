@@ -17,7 +17,7 @@ part '../extension/bluetooth_manager_ext.dart';
 /// flutterbluetoothserial을 통해서 ble도 함께 가지고 올 수 있지만 flutterblueplus를 통해서 가지고 오는 이유는
 /// flutterblueplus를 통해서 가지고 올 경우 service, characteristic, descriptor 등을 dart객체로 맵핑되어 가지고 올 수 있기 때문
 /// 반대로 flutterbluetoothserial를 사용하는 이유는 flutterblueplus는 ble만 가지고 올 수 있기 때문에 classic을 가지고 오기 위해서 사용
-final class BluetoothManager extends FlutterBluePlus {
+final class BluetoothManager {
   BluetoothManager._({
     required FlutterBluetoothSerial classic,
     required Stream<bool> isBluetoothEnabledController,
@@ -45,7 +45,7 @@ final class BluetoothManager extends FlutterBluePlus {
       FlutterBluePlus.lastScanResults.map((e) => BleDevice(remoteId: e.device.remoteId)).toList();
   final StreamController<bool> _isScanningController;
   final Stream<List<BleDevice>> _liveBleResults =
-      FlutterBluePlus.scanResults.transform(BleModelTransformer()).asBroadcastStream().distinct();
+      FlutterBluePlus.scanResults.transform(BleModelTransformer()).asBroadcastStream();
   final StreamController<List<ClassicDevice>> _liveClassicResults = StreamController<List<ClassicDevice>>.broadcast();
   SettingObject _settingObject;
 
@@ -58,12 +58,10 @@ final class BluetoothManager extends FlutterBluePlus {
     _isScanningSubscription = FlutterBluePlus.isScanning.listen((isScanning) {
       debugPrint('isScanning: $isScanning');
       if (isScanning) {
-        _isScanningController.add(true);
         _lastBleResults.clear();
       } else {
         _lastBleResults
             .addAll(FlutterBluePlus.lastScanResults.map((e) => BleDevice(remoteId: e.device.remoteId)).toList());
-        _isScanningController.add(false);
       }
     });
 
@@ -122,25 +120,26 @@ final class BluetoothManager extends FlutterBluePlus {
         withNames: _settingObject.filteringBleDeviceNameList, androidUsesFineLocation: true);
 
     _discoveryResultSubscription ??= _startDiscovery().listen((event) {
+      debugPrint('discoveryResult: ${event.device.name} ${event.device.address} ${event.device.isConnected}');
       _lastClassicResults.add(event.device.toClassicDevice());
-      _liveClassicResults.add(_lastClassicResults);
-    }, onDone: () {
-      FlutterBluePlus.stopScan();
+      final ids = <String>{};
+      _lastClassicResults.retainWhere((element) => ids.add(element.address));
+      _liveClassicResults.add([..._lastClassicResults]);
+      _isScanningController.add(true);
+    }, onDone: () async {
+      await FlutterBluePlus.stopScan();
       _discoveryResultSubscription?.cancel();
       _discoveryResultSubscription = null;
+      _isScanningController.add(false);
     });
   }
 
-  Future<void> stopScan() async {
-    await _classic.cancelDiscovery();
-  }
+  Future<void> stopScan() async => await Future.wait([FlutterBluePlus.stopScan(), _classic.cancelDiscovery()]);
 
-  Future<void> openSettings() async {
-    await _classic.openSettings();
-  }
+  Future<void> openSettings() async => await _classic.openSettings();
 
   Future<void> removeBondDevice(String address) async {
-    await BluetoothConnection.toAddress(address).then((value) => value.isConnected ? value.finish() : null);
+    await BluetoothConnection.toAddress(address).then((value) async => value.isConnected ? await value.close() : null);
     await _classic.removeDeviceBondWithAddress(address);
   }
 
@@ -193,6 +192,7 @@ final class BluetoothManager extends FlutterBluePlus {
     _instance = null;
   }
 
+  /// 블루투스 turn on/off 타임아웃
   set timeout(int value) {
     _settingObject = _settingObject.copyWith(timeout: value);
   }
