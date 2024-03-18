@@ -56,16 +56,16 @@ final class BluetoothManager {
   void _init() {
     FlutterBluePlus.setLogLevel(LogLevel.verbose);
 
-    _isScanningSubscription = FlutterBluePlus.isScanning.listen((isScanning) {
-      debugPrint('isScanning: $isScanning');
-      if (isScanning) {
-        _lastBleResults.clear();
-      } else {
-        _lastBleResults.addAll(FlutterBluePlus.lastScanResults
-            .map((e) => BleDevice(remoteId: e.device.remoteId))
-            .toList());
-      }
-    });
+    // _isScanningSubscription = FlutterBluePlus.isScanning.listen((isScanning) {
+    //   debugPrint('isScanning: $isScanning');
+    //   if (isScanning) {
+    //     _lastBleResults.clear();
+    //   } else {
+    //     _lastBleResults.addAll(FlutterBluePlus.lastScanResults
+    //         .map((e) => BleDevice(remoteId: e.device.remoteId))
+    //         .toList());
+    //   }
+    // });
 
     FlutterBluePlus.events.onConnectionStateChanged.listen((event) async {
       debugPrint('connection state changed: ${event.device.isConnected}');
@@ -119,8 +119,10 @@ final class BluetoothManager {
 
     _isScanningController.add(true);
 
-    await FlutterBluePlus.startScan(
-        withNames: _settingObject.filteringBleDeviceNameList, androidUsesFineLocation: true);
+    if (!_settingObject.branchOutEvent) {
+      await FlutterBluePlus.startScan(
+          withNames: _settingObject.filteringBleDeviceNameList, androidUsesFineLocation: true);
+    }
 
     _discoveryResultSubscription ??= _startDiscovery().listen((event) {
       _lastClassicResults.add(event.device.toClassicDevice());
@@ -129,7 +131,10 @@ final class BluetoothManager {
       _liveClassicResults.add([..._lastClassicResults]);
       _isScanningController.add(true);
     }, onDone: () async {
-      await FlutterBluePlus.stopScan();
+      if (!_settingObject.branchOutEvent) {
+        await FlutterBluePlus.stopScan();
+      }
+
       _discoveryResultSubscription?.cancel();
       _discoveryResultSubscription = null;
       _isScanningController.add(false);
