@@ -176,6 +176,17 @@ final class BluetoothManager {
     }
   }
 
+  Future<void> startBleScan() async {
+    if (!_settingObject.branchOutEvent) return;
+    await FlutterBluePlus.startScan(
+        withNames: _settingObject.filteringBleDeviceNameList, androidUsesFineLocation: true);
+  }
+
+  Future<void> stopBleScan() async {
+    if (!_settingObject.branchOutEvent) return;
+    await FlutterBluePlus.stopScan();
+  }
+
   void connectedDevices() async {
     final result = await _classic.getBondedDevices();
 
