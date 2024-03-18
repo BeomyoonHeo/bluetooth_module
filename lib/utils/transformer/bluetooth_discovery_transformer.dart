@@ -8,11 +8,11 @@ class BluetoothStateTransformer<T extends BluetoothAdapterState, B extends bool>
     return stream.map(
       (event) {
         switch (event) {
-          case BluetoothAdapterState.turningOff:
-          case BluetoothAdapterState.off:
           case BluetoothAdapterState.unknown:
           case BluetoothAdapterState.unavailable:
           case BluetoothAdapterState.unauthorized:
+          case BluetoothAdapterState.turningOff:
+          case BluetoothAdapterState.off:
             return false as B;
           case BluetoothAdapterState.turningOn:
           case BluetoothAdapterState.on:
