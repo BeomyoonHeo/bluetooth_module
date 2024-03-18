@@ -20,12 +20,14 @@ class SettingObject {
     List<String>? filteringDeviceNameList,
     List<String>? filteringBleDeviceNameList,
     String? filteringDeviceAddress,
+    bool? branchOutEvent,
   }) =>
       SettingObject(
         timeout: timeout ?? this.timeout,
         filteringDeviceNameList: filteringDeviceNameList ?? this.filteringDeviceNameList,
         filteringDeviceAddress: filteringDeviceAddress ?? this.filteringDeviceAddress,
         filteringBleDeviceNameList: filteringBleDeviceNameList ?? this.filteringBleDeviceNameList,
+        branchOutEvent: branchOutEvent ?? this.branchOutEvent,
       );
 
   bool get isFilteringEnabled =>

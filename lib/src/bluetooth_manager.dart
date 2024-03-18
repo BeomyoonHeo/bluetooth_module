@@ -218,6 +218,10 @@ final class BluetoothManager {
     _settingObject = _settingObject.copyWith(filteringDeviceAddress: value);
   }
 
+  set branchOutEvent(bool value) {
+    _settingObject = _settingObject.copyWith(branchOutEvent: value);
+  }
+
   static BluetoothEvents get bleEvents => FlutterBluePlus.events;
 
   FlutterBluetoothSerial get classic => _classic;
