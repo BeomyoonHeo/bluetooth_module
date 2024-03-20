@@ -54,7 +54,7 @@ final class BluetoothManager {
   StreamSubscription<bool>? _isScanningSubscription;
 
   void _init() {
-    FlutterBluePlus.setLogLevel(LogLevel.verbose);
+    FlutterBluePlus.setLogLevel(LogLevel.none);
 
     // _isScanningSubscription = FlutterBluePlus.isScanning.listen((isScanning) {
     //   debugPrint('isScanning: $isScanning');
@@ -114,6 +114,8 @@ final class BluetoothManager {
     if (_discoveryResultSubscription != null) {
       return;
     }
+
+    _liveClassicResults.add([]);
 
     _lastClassicResults.clear();
 
@@ -231,6 +233,10 @@ final class BluetoothManager {
 
   set branchOutEvent(bool value) {
     _settingObject = _settingObject.copyWith(branchOutEvent: value);
+  }
+
+  set bleLogLevel(LogLevel value) {
+    FlutterBluePlus.setLogLevel(value);
   }
 
   static BluetoothEvents get bleEvents => FlutterBluePlus.events;
